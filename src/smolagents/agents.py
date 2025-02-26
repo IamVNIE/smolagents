@@ -65,6 +65,8 @@ from .utils import (
     truncate_content,
 )
 
+from prefect import flow, task
+from prefect.tasks import NO_CACHE
 
 logger = getLogger(__name__)
 
@@ -535,6 +537,7 @@ You have been provided with these additional arguments, that you can access usin
         """Creates a rich tree visualization of the agent's structure."""
         self.logger.visualize_agent_tree(self)
 
+    @task(name="ParseActionOutput", cache_policy=NO_CACHE)
     def extract_action(self, model_output: str, split_token: str) -> Tuple[str, str]:
         """
         Parse action from the LLM output
@@ -556,6 +559,7 @@ You have been provided with these additional arguments, that you can access usin
             )
         return rationale.strip(), action.strip()
 
+    @task(name="FinalAnswerOfTask", cache_policy=NO_CACHE)
     def provide_final_answer(self, task: str, images: Optional[list[str]]) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
@@ -600,6 +604,7 @@ You have been provided with these additional arguments, that you can access usin
         except Exception as e:
             return f"Error in generating final LLM output:\n{e}"
 
+    @task(name="ToolCall", cache_policy=NO_CACHE)
     def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
         """
         Execute tool with the provided input and returns the result.
@@ -1034,6 +1039,7 @@ class ToolCallingAgent(MultiStepAgent):
         )
         return system_prompt
 
+    @task(name="ToolAgent-ReAct-Step", cache_policy=NO_CACHE)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
@@ -1189,6 +1195,7 @@ class CodeAgent(MultiStepAgent):
             case _:  # if applicable
                 raise ValueError(f"Unsupported executor type: {executor_type}")
 
+
     def initialize_system_prompt(self) -> str:
         system_prompt = populate_template(
             self.prompt_templates["system_prompt"],
@@ -1204,6 +1211,7 @@ class CodeAgent(MultiStepAgent):
         )
         return system_prompt
 
+    @task(name="CodeAgent-ReAct-Step", cache_policy=NO_CACHE)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.

@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from smolagents.models import ChatMessage
     from smolagents.monitoring import AgentLogger
 
+from prefect import flow, task
+from prefect.tasks import NO_CACHE
 
 logger = getLogger(__name__)
 
@@ -148,6 +150,7 @@ class PlanningStep(MemoryStep):
     model_output_message_plan: ChatMessage
     plan: str
 
+    @task(name="PlanningStep", cache_policy=NO_CACHE)
     def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
         messages = []
         messages.append(
@@ -183,6 +186,7 @@ class TaskStep(MemoryStep):
 class SystemPromptStep(MemoryStep):
     system_prompt: str
 
+    @task(name="SystemPromptStep", cache_policy=NO_CACHE)
     def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
         if summary_mode:
             return []
