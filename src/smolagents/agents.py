@@ -1300,3 +1300,37 @@ class CodeAgent(MultiStepAgent):
         self.logger.log(Group(*execution_outputs_console), level=LogLevel.INFO)
         memory_step.action_output = output
         return output if is_final_answer else None
+
+    @flow(name="CodeAgentFlow")
+    def run_flow(self, task: str, stream: bool = False, reset: bool = True, images=None, additional_args=None):
+        """Run the CodeAgent as a flow."""
+        self.task = task
+        if additional_args:
+            self.state.update(additional_args)
+            self.task += f"\nYou have additional args: {str(additional_args)}."
+
+        self.system_prompt = self.initialize_system_prompt()
+        self.memory.system_prompt = SystemPromptStep(system_prompt=self.system_prompt)
+        if reset:
+            self.memory.reset()
+            self.monitor.reset()
+
+        self.logger.log_task(
+            content=self.task.strip(),
+            subtitle=f"{type(self.model).__name__} - {getattr(self.model, 'model_id', '')}",
+            level=1,
+            title=self.name if hasattr(self, "name") else None,
+        )
+        self.memory.steps.append(TaskStep(task=self.task, task_images=images))
+
+        final_answer = None
+        self.step_number = 1
+        while final_answer is None and self.step_number <= self.max_steps:
+            memory_step = ActionStep(step_number=self.step_number)
+            final_answer = self.step(memory_step)  # Call as task
+            self.memory.steps.append(memory_step)
+            self.step_number += 1
+
+        if final_answer is None:
+            final_answer = self.provide_final_answer(task, images)
+        return final_answer
