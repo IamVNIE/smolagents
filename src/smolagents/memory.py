@@ -28,15 +28,20 @@ class ToolCall:
     arguments: Any
     id: str
 
+    
     def dict(self):
-        return {
+        @task(name=f"ToolCall:{self.name.upper()}", cache_policy=NO_CACHE)
+        def dict_task() -> dict:
+            return {
             "id": self.id,
             "type": "function",
             "function": {
                 "name": self.name,
                 "arguments": make_json_serializable(self.arguments),
-            },
-        }
+                },
+            }
+        return dict_task()
+        
 
 
 @dataclass
