@@ -191,7 +191,7 @@ class TaskStep(MemoryStep):
 class SystemPromptStep(MemoryStep):
     system_prompt: str
 
-    @task(name="SystemPromptStep", cache_policy=NO_CACHE)
+    # @task(name="SystemPromptStep", cache_policy=NO_CACHE)
     def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
         if summary_mode:
             return []

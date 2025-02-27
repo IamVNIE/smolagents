@@ -35,9 +35,6 @@ from .utils import _is_package_available, encode_image_base64, make_image_url
 if TYPE_CHECKING:
     from transformers import StoppingCriteriaList
 
-from prefect import flow, task
-from prefect.tasks import NO_CACHE
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_JSONAGENT_REGEX_GRAMMAR = {
@@ -856,7 +853,6 @@ class LiteLLMModel(Model):
             else self.model_id.startswith(("ollama", "groq", "cerebras"))
         )
 
-    @task(name="LlmCall", cache_policy=NO_CACHE)
     def __call__(
         self,
         messages: List[Dict[str, str]],
