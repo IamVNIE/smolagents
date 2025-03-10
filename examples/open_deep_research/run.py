@@ -91,6 +91,12 @@ def create_agent(model_id="o1"):
     }
     if model_id == "o1":
         model_params["reasoning_effort"] = "high"
+
+    if "bedrock" in model_id:
+        model_params["aws_region_name"]= os.getenv('AWS_REGION_NAME')
+        model_params["aws_access_key_id"]= os.getenv('AWS_ACCESS_KEY_ID')
+        model_params["aws_secret_access_key"]= os.getenv('AWS_SECRET_ACCESS_KEY')
+                
     model = LiteLLMModel(**model_params)
 
     text_limit = 100000
