@@ -96,7 +96,7 @@ class ActionStep(MemoryStep):
         if self.tool_calls is not None:
             messages.append(
                 Message(
-                    role=MessageRole.ASSISTANT,
+                    role=MessageRole.TOOL_CALL,
                     content=[
                         {
                             "type": "text",
@@ -113,7 +113,8 @@ class ActionStep(MemoryStep):
                     content=[
                         {
                             "type": "text",
-                            "text": f"Call id: {self.tool_calls[0].id}\nObservation:\n{self.observations}",
+                            "text": (f"Call id: {self.tool_calls[0].id}\n" if self.tool_calls else "")
+                            + f"Observation:\n{self.observations}",
                         }
                     ],
                 )
