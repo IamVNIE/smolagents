@@ -138,6 +138,7 @@ def create_agent(model_id="o1"):
         additional_authorized_imports=AUTHORIZED_IMPORTS,
         planning_interval=4,
         managed_agents=[text_webbrowser_agent],
+        add_base_tools=True,
     )
 
     return manager_agent

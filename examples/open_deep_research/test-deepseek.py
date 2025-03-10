@@ -2,26 +2,32 @@ from smolagents import CodeAgent, LiteLLMModel
 import litellm, os
 from dotenv import load_dotenv
 load_dotenv(override=True)
-print(os.getenv("DEEPSEEK_API_KEY"))
+
 
 # Enable verbose mode for debugging
 litellm.set_verbose = True
+# os.environ['LITELLM_LOG'] = 'DEBUG'
 
-# Initialize the model
-model = LiteLLMModel(
+
+MODEL_LIST = [
     "deepseek/deepseek-chat",
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    "deepseek/deepseek-reasoner",
+]
+
+
+for model_name in MODEL_LIST:
+
+    print(f"\n\n{50*'~'} \nRunning {model_name} \n {50*'~'}\n")
+    model = LiteLLMModel(model_name)
+
+    # Create a basic agent
+    agent = CodeAgent(
+        tools=[],
+        model=model,
+        add_base_tools=True,
+        verbosity_level=2
     )
-# model = LiteLLMModel("deepseek/deepseek-reasoner")
 
-# Create a basic agent
-agent = CodeAgent(
-    tools=[],
-    model=model,
-    add_base_tools=True,
-    verbosity_level=2
-)
-
-# Run the agent with a simple task
-result = agent.run("Get the weather in Dublin")
-print(result) 
+    # Run the agent with a simple task
+    result = agent.run("Get the weather in Dublin")
+    print(result) 
