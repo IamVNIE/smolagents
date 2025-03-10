@@ -1,12 +1,18 @@
 from smolagents import CodeAgent, LiteLLMModel
-import litellm
+import litellm, os
+from dotenv import load_dotenv
+load_dotenv(override=True)
+print(os.getenv("DEEPSEEK_API_KEY"))
 
 # Enable verbose mode for debugging
 litellm.set_verbose = True
 
 # Initialize the model
-# model = LiteLLMModel("deepseek/deepseek-chat")
-model = LiteLLMModel("deepseek/deepseek-reasoner")
+model = LiteLLMModel(
+    "deepseek/deepseek-chat",
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    )
+# model = LiteLLMModel("deepseek/deepseek-reasoner")
 
 # Create a basic agent
 agent = CodeAgent(
