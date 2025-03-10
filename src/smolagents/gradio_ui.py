@@ -263,6 +263,11 @@ class GradioUI:
             file_uploads_log = gr.State([])
 
             with gr.Sidebar():
+                agent_name=""
+                try:
+                    agent_name=self.name.replace('_', ' ').capitalize()
+                except:
+                    agent_name = 'Agent interface'
                 gr.Markdown(
                     f"# {self.name.replace('_', ' ').capitalize() or 'Agent interface'}"
                     "\n> This web ui allows you to interact with a `smolagents` agent that can use tools and execute steps to complete tasks."
