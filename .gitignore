@@ -151,3 +151,7 @@ savedir/
 output/
 tool_output/
 examples/open_deep_research/.gradio/certificate.pem
+examples/smolagents_benchmark/test_ds.csv
+examples/smolagents_benchmark/gaia_benchmark_validation_set_question_and_answers.csv
+examples/.gradio/certificate.pem
+examples/smolagents_benchmark/download_dataset.ipynb
