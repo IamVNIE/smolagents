@@ -25,7 +25,7 @@ import time
 from collections import deque
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
 
 import jinja2
 import yaml
@@ -66,6 +66,7 @@ from .utils import (
 
 from prefect import flow, task
 from prefect.tasks import NO_CACHE
+import asyncio
 
 logger = getLogger(__name__)
 
@@ -1002,6 +1003,92 @@ You have been provided with these additional arguments, that you can access usin
                 repo_type="space",
             )
 
+    async def arun(
+            self,
+            task: str,
+            stream: bool = False,
+            reset: bool = True,
+            images: Optional[List[str]] = None,
+            additional_args: Optional[Dict] = None,
+            max_steps: Optional[int] = None,
+        ) -> Union[AsyncGenerator[ActionStep | AgentType, None], Any]:
+            # Async version of run method
+            max_steps = max_steps or self.max_steps
+            self.task = task
+            if additional_args is not None:
+                self.state.update(additional_args)
+                self.task += f"""
+    You have been provided with these additional arguments, that you can access using the keys as variables in your python code:
+    {str(additional_args)}."""
+
+            self.system_prompt = self.initialize_system_prompt()
+            self.memory.system_prompt = SystemPromptStep(system_prompt=self.system_prompt)
+            if reset:
+                self.memory.reset()
+                self.monitor.reset()
+
+            self.logger.log_task(
+                content=self.task.strip(),
+                subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, 'model_id') else '')}",
+                level=LogLevel.INFO,
+                title=self.name if hasattr(self, "name") else None,
+            )
+            self.memory.steps.append(TaskStep(task=self.task, task_images=images))
+
+            if getattr(self, "python_executor", None):
+                self.python_executor.send_variables(variables=self.state)
+                self.python_executor.send_tools({**self.tools, **self.managed_agents})
+
+            if stream:
+                # Return an async generator for streaming steps
+                return self._arun(task=self.task, max_steps=max_steps, images=images)
+            # Run asynchronously and return the final result
+            async for step in self._arun(task=self.task, max_steps=max_steps, images=images):
+                final_result = step
+            return final_result
+
+    async def _arun(
+        self, task: str, max_steps: int, images: List[str] | None = None
+    ) -> AsyncGenerator[ActionStep | AgentType, None]:
+        """
+        Asynchronous execution of the agent's steps.
+
+        Args:
+            task (`str`): Task to perform.
+            max_steps (`int`): Maximum number of steps.
+            images (`list[str]`, *optional*): Paths to image(s).
+
+        Yields:
+            ActionStep or AgentType: Steps or final result of the agent's execution.
+        """
+        final_answer = None
+        self.step_number = 1
+        while final_answer is None and self.step_number <= max_steps:
+            step_start_time = time.time()
+            memory_step = self._create_memory_step(step_start_time, images)
+            try:
+                final_answer = await self._astep(memory_step)
+            except AgentGenerationError as e:
+                raise e
+            except AgentError as e:
+                memory_step.error = e
+            finally:
+                self._finalize_step(memory_step, step_start_time)
+                yield memory_step
+                self.step_number += 1
+                await asyncio.sleep(0)  # Yield control to the event loop
+
+        if final_answer is None and self.step_number == max_steps + 1:
+            final_answer = self._handle_max_steps_reached(task, images, step_start_time)
+            yield memory_step
+        yield handle_agent_output_types(final_answer)
+
+    async def _astep(self, memory_step: ActionStep) -> Union[None, Any]:
+        """
+        Asynchronous version of the step method.
+        Default implementation calls the synchronous step method.
+        """
+        return self.step(memory_step)
 
 class ToolCallingAgent(MultiStepAgent):
     """
