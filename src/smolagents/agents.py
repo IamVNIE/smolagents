@@ -1004,49 +1004,51 @@ You have been provided with these additional arguments, that you can access usin
             )
 
     async def arun(
-            self,
-            task: str,
-            stream: bool = False,
-            reset: bool = True,
-            images: Optional[List[str]] = None,
-            additional_args: Optional[Dict] = None,
-            max_steps: Optional[int] = None,
-        ) -> Union[AsyncGenerator[ActionStep | AgentType, None], Any]:
-            # Async version of run method
-            max_steps = max_steps or self.max_steps
-            self.task = task
-            if additional_args is not None:
-                self.state.update(additional_args)
-                self.task += f"""
-    You have been provided with these additional arguments, that you can access using the keys as variables in your python code:
-    {str(additional_args)}."""
+        self,
+        task: str,
+        stream: bool = False,
+        reset: bool = True,
+        images: Optional[List[str]] = None,
+        additional_args: Optional[Dict] = None,
+        max_steps: Optional[int] = None,
+    ) -> Union[AsyncGenerator[ActionStep | AgentType, None], Any]:
+        # Async version of run method
+        max_steps = max_steps or self.max_steps
+        self.task = task
+        if additional_args is not None:
+            self.state.update(additional_args)
+            self.task += f"""
+            You have been provided with these additional arguments, that you can access using the keys as variables in your python code:
+            {str(additional_args)}."""
 
-            self.system_prompt = self.initialize_system_prompt()
-            self.memory.system_prompt = SystemPromptStep(system_prompt=self.system_prompt)
-            if reset:
-                self.memory.reset()
-                self.monitor.reset()
+        self.system_prompt = self.initialize_system_prompt()
+        self.memory.system_prompt = SystemPromptStep(system_prompt=self.system_prompt)
+        if reset:
+            self.memory.reset()
+            self.monitor.reset()
 
-            self.logger.log_task(
-                content=self.task.strip(),
-                subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, 'model_id') else '')}",
-                level=LogLevel.INFO,
-                title=self.name if hasattr(self, "name") else None,
-            )
-            self.memory.steps.append(TaskStep(task=self.task, task_images=images))
+        self.logger.log_task(
+            content=self.task.strip(),
+            subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, 'model_id') else '')}",
+            level=LogLevel.INFO,
+            title=self.name if hasattr(self, "name") else None,
+        )
+        self.memory.steps.append(TaskStep(task=self.task, task_images=images))
 
-            if getattr(self, "python_executor", None):
-                self.python_executor.send_variables(variables=self.state)
-                self.python_executor.send_tools({**self.tools, **self.managed_agents})
+        if getattr(self, "python_executor", None):
+            self.python_executor.send_variables(variables=self.state)
+            self.python_executor.send_tools({**self.tools, **self.managed_agents})
 
-            if stream:
-                # Return an async generator for streaming steps
-                return self._arun(task=self.task, max_steps=max_steps, images=images)
-            # Run asynchronously and return the final result
+        if stream:
+            # Return an async generator for streaming steps
+            return self._arun(task=self.task, max_steps=max_steps, images=images)
+        else:
+            # Run asynchronously and collect the final result without streaming
+            final_result = None
             async for step in self._arun(task=self.task, max_steps=max_steps, images=images):
                 final_result = step
             return final_result
-
+        
     async def _arun(
         self, task: str, max_steps: int, images: List[str] | None = None
     ) -> AsyncGenerator[ActionStep | AgentType, None]:
