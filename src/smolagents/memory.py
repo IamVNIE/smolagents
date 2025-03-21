@@ -30,7 +30,7 @@ class ToolCall:
     arguments: Any
     id: str
 
-    @PrefectOrchestrator(name=lambda self: f"ToolCall:{self.name.upper()}", type="task", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(name=lambda self: f"ToolCall:{self.name.upper()}", type="task", cache_policy=NO_CACHE, retries=0)
     def dict(self) -> dict:
         return {
             "id": self.id,
@@ -153,7 +153,7 @@ class PlanningStep(MemoryStep):
     model_output_message: ChatMessage
     plan: str
 
-    @PrefectOrchestrator(type="task", name="PlanningStep", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="PlanningStep", cache_policy=NO_CACHE, retries=2)
     def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
         if summary_mode:
             return []

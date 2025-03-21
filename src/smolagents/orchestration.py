@@ -18,7 +18,7 @@ from smolagents.config import SmolConfig
 
 # Conditional Orchestration Decorator
 class PrefectOrchestrator:
-    def __init__(self, name: str | Callable[[Any], str], type: str = 'task', cache_policy: Optional[Any] = None, retry: Optional[int] = 0):
+    def __init__(self, name: str | Callable[[Any], str], type: str = 'task', cache_policy: Optional[Any] = None, retries: Optional[int] = 0):
         self.name = name
         self.type = type.lower()
         self.cache_policy = cache_policy
@@ -30,10 +30,9 @@ class PrefectOrchestrator:
             return self
         use_prefect = SmolConfig.get_use_prefect()
         name = self.name(obj) if callable(self.name) else self.name
-        # print(f"\n\n\n\nuse_prefect:{use_prefect}, type:{self.type}, name:{name}\n\n\n\n")
         if use_prefect and PREFECT_AVAILABLE:
             if self.type == 'task':
-                return task(self.func, name=name, cache_policy=self.cache_policy).__get__(obj, objtype)
+                return task(self.func, name=name, cache_policy=self.cache_policy, retries=self.retries).__get__(obj, objtype)
             elif self.type == 'flow':
                 decorated = flow(self.func, name=name)
                 return lambda *args, **kwargs: decorated(obj, *args, **kwargs)

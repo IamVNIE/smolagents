@@ -516,7 +516,7 @@ You have been provided with these additional arguments, that you can access usin
             )
         return rationale.strip(), action.strip()
 
-    @PrefectOrchestrator(type="task", name="FinalAnswerOfTask", cache_policy='no_cache')
+    @PrefectOrchestrator(type="task", name="FinalAnswerOfTask", cache_policy='no_cache', retries=1)
     def provide_final_answer(self, task: str, images: Optional[list["PIL.Image.Image"]]) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
@@ -994,7 +994,7 @@ class ToolCallingAgent(MultiStepAgent):
         )
         return system_prompt
 
-    @PrefectOrchestrator(type="task", name="CodeAgent-ReAct-Step", cache_policy= NO_CACHE)
+    @PrefectOrchestrator(type="task", name="ToolAgent-ReAct-Step", cache_policy= NO_CACHE, retries=0)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
@@ -1175,7 +1175,7 @@ class CodeAgent(MultiStepAgent):
         )
         return system_prompt
 
-    @PrefectOrchestrator(type="task", name="CodeAgent-ReAct-Step", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="CodeAgent-ReAct-Step", cache_policy=NO_CACHE, retries=0)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
