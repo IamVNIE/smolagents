@@ -308,7 +308,7 @@ You have been provided with these additional arguments, that you can access usin
 
         self.logger.log_task(
             content=self.task.strip(),
-            subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, 'model_id') else '')}",
+            subtitle=f"{type(self.model).__name__} - {getattr(self.model, 'model_id', '')}",
             level=LogLevel.INFO,
             title=self.name if hasattr(self, "name") else None,
         )
@@ -1198,7 +1198,8 @@ class CodeAgent(MultiStepAgent):
             )
             memory_step.model_output_message = chat_message
             model_output = chat_message.content
-            if "deepseek" in self.model.model_id:
+            model_id = getattr(self.model, 'model_id', '')
+            if "deepseek" in model_id:
                 cleaned_model_output = re.sub(r"""<think>.*?</think>""", "", model_output, flags=re.DOTALL)
                 model_output = cleaned_model_output
 
