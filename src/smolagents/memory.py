@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, TypedDict, Union
 from smolagents.models import ChatMessage, MessageRole
 from smolagents.monitoring import AgentLogger, LogLevel
 from smolagents.utils import AgentError, make_json_serializable
-
+from smolagents.orchestration import PrefectOrchestrator, NO_CACHE
 
 if TYPE_CHECKING:
     import PIL.Image
@@ -30,19 +30,16 @@ class ToolCall:
     arguments: Any
     id: str
 
-    
-    def dict(self):
-        @task(name=f"ToolCall:{self.name.upper()}", cache_policy=NO_CACHE)
-        def dict_task() -> dict:
-            return {
+    @PrefectOrchestrator(name=lambda self: f"ToolCall:{self.name.upper()}", type="task", cache_policy=NO_CACHE)
+    def dict(self) -> dict:
+        return {
             "id": self.id,
             "type": "function",
             "function": {
                 "name": self.name,
                 "arguments": make_json_serializable(self.arguments),
-                },
-            }
-        return dict_task()
+            },
+        }
         
 
 
@@ -156,7 +153,7 @@ class PlanningStep(MemoryStep):
     model_output_message: ChatMessage
     plan: str
 
-    @task(name="PlanningStep", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="PlanningStep", cache_policy=NO_CACHE)
     def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
         if summary_mode:
             return []
@@ -181,7 +178,6 @@ class TaskStep(MemoryStep):
 class SystemPromptStep(MemoryStep):
     system_prompt: str
 
-    # @task(name="SystemPromptStep", cache_policy=NO_CACHE)
     def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
         if summary_mode:
             return []

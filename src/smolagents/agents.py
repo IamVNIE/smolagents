@@ -68,11 +68,10 @@ from .utils import (
     truncate_content,
 )
 
-from prefect import flow, task
-from prefect.tasks import NO_CACHE
+from .orchestration import PrefectOrchestrator, NO_CACHE
+
 
 logger = getLogger(__name__)
-
 
 def get_variable_names(self, template: str) -> Set[str]:
     pattern = re.compile(r"\{\{([^{}]+)\}\}")
@@ -496,7 +495,6 @@ You have been provided with these additional arguments, that you can access usin
         """Creates a rich tree visualization of the agent's structure."""
         self.logger.visualize_agent_tree(self)
 
-    @task(name="ParseActionOutput", cache_policy=NO_CACHE)
     def extract_action(self, model_output: str, split_token: str) -> Tuple[str, str]:
         """
         Parse action from the LLM output
@@ -518,7 +516,7 @@ You have been provided with these additional arguments, that you can access usin
             )
         return rationale.strip(), action.strip()
 
-    @task(name="FinalAnswerOfTask", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="FinalAnswerOfTask", cache_policy='no_cache')
     def provide_final_answer(self, task: str, images: Optional[list["PIL.Image.Image"]]) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
@@ -563,7 +561,7 @@ You have been provided with these additional arguments, that you can access usin
         except Exception as e:
             return f"Error in generating final LLM output:\n{e}"
 
-    @task(name="ToolCall", cache_policy=NO_CACHE)
+    # @task(name="ToolCall", cache_policy=NO_CACHE)
     def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
         """
         Execute tool with the provided input and returns the result.
@@ -988,7 +986,7 @@ class ToolCallingAgent(MultiStepAgent):
             planning_interval=planning_interval,
             **kwargs,
         )
-
+        
     def initialize_system_prompt(self) -> str:
         system_prompt = populate_template(
             self.prompt_templates["system_prompt"],
@@ -996,7 +994,7 @@ class ToolCallingAgent(MultiStepAgent):
         )
         return system_prompt
 
-    @task(name="ToolAgent-ReAct-Step", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="CodeAgent-ReAct-Step", cache_policy= NO_CACHE)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
@@ -1177,7 +1175,7 @@ class CodeAgent(MultiStepAgent):
         )
         return system_prompt
 
-    @task(name="CodeAgent-ReAct-Step", cache_policy=NO_CACHE)
+    @PrefectOrchestrator(type="task", name="CodeAgent-ReAct-Step", cache_policy=NO_CACHE)
     def step(self, memory_step: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
@@ -1278,7 +1276,7 @@ class CodeAgent(MultiStepAgent):
         memory_step.action_output = output
         return output if is_final_answer else None
 
-    @flow(name="CodeAgentFlow")
+    @PrefectOrchestrator(type='flow', name="CodeAgentFlow")
     def run_flow(self, task: str, stream: bool = False, reset: bool = True, images=None, additional_args=None):
         """Run the CodeAgent as a flow."""
         self.task = task
@@ -1311,6 +1309,7 @@ class CodeAgent(MultiStepAgent):
         if final_answer is None:
             final_answer = self.provide_final_answer(task, images)
         return final_answer
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert the agent to a dictionary representation.
 
