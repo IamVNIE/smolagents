@@ -1,6 +1,6 @@
 import logging
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
@@ -17,7 +17,7 @@ from scripts.text_web_browser import (
 )
 from smolagents import CodeAgent, LiteLLMModel, ToolCallingAgent, DuckDuckGoSearchTool
 # Enable verbose mode for debugging
-litellm.set_verbose = True
+# litellm.set_verbose = True
 # os.environ['LITELLM_LOG'] = 'DEBUG'
 
 
@@ -72,7 +72,7 @@ os.makedirs(f"./{BROWSER_CONFIG['downloads_folder']}", exist_ok=True)
 
 
 MODEL_LIST = [
-    # "deepseek/deepseek-chat",
+    "deepseek/deepseek-chat",
     "deepseek/deepseek-reasoner",
 ]
 
@@ -86,6 +86,7 @@ for model_name in MODEL_LIST:
         max_completion_tokens=8192,
         reasoning_effort="high",
         drop_params = True,
+        fix_user_message=True
     )
     text_limit = 20000
     WEB_TOOLS = [
