@@ -852,6 +852,7 @@ class LiteLLMModel(ApiModel):
         api_key=None,
         custom_role_conversions: Optional[Dict[str, str]] = None,
         flatten_messages_as_text: bool | None = None,
+        fix_user_message: bool = False,
         **kwargs,
     ):
         if not model_id:
@@ -866,6 +867,7 @@ class LiteLLMModel(ApiModel):
         self.api_base = api_base
         self.api_key = api_key
         self.custom_role_conversions = custom_role_conversions
+        self.fix_user_message = fix_user_message
         flatten_messages_as_text = (
             flatten_messages_as_text
             if flatten_messages_as_text is not None
@@ -888,6 +890,10 @@ class LiteLLMModel(ApiModel):
                 "Please install 'litellm' extra to use LiteLLMModel: `pip install 'smolagents[litellm]'`"
             )
 
+        if self.fix_user_message:
+            if messages and messages[-1]["role"] != MessageRole.USER:
+                messages.append({"role": MessageRole.USER, "content": [{"type": "text", "text": "Please proceed."}]})
+                
         completion_kwargs = self._prepare_completion_kwargs(
             messages=messages,
             stop_sequences=stop_sequences,

@@ -1,10 +1,14 @@
 import logging
-
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
+
 from smolagents import CodeAgent, LiteLLMModel
+from smolagents.config import SmolConfig
+
+SmolConfig.set_use_prefect(False)
+
 import litellm, os
 from dotenv import load_dotenv
 load_dotenv(override=True)
@@ -16,7 +20,7 @@ from scripts.text_web_browser import (
 )
 from smolagents import CodeAgent, LiteLLMModel, ToolCallingAgent, DuckDuckGoSearchTool
 # Enable verbose mode for debugging
-litellm.set_verbose = True
+# litellm.set_verbose = True
 # os.environ['LITELLM_LOG'] = 'DEBUG'
 
 
@@ -72,7 +76,7 @@ os.makedirs(f"./{BROWSER_CONFIG['downloads_folder']}", exist_ok=True)
 
 MODEL_LIST = [
     "deepseek/deepseek-chat",
-    "deepseek/deepseek-reasoner",
+    # "deepseek/deepseek-reasoner",
 ]
 
 
@@ -84,7 +88,8 @@ for model_name in MODEL_LIST:
         # custom_role_conversions=custom_role_conversions,
         max_completion_tokens=8192,
         reasoning_effort="high",
-        drop_params = True
+        drop_params = True,
+        fix_user_message=True
     )
     text_limit = 20000
     WEB_TOOLS = [
@@ -102,6 +107,7 @@ for model_name in MODEL_LIST:
     agent = CodeAgent(
         model=model,
         tools=[visualizer, TextInspectorTool(model, text_limit)],
+        add_base_tools=True,
         max_steps=12,
         verbosity_level=10,
         additional_authorized_imports=AUTHORIZED_IMPORTS,
