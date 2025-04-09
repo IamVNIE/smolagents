@@ -85,11 +85,13 @@ for model_name in MODEL_LIST:
     print(f"\n\n{50*'~'} \nRunning {model_name} \n {50*'~'}\n")
     model = LiteLLMModel(
         model_name,
-        # custom_role_conversions=custom_role_conversions,
+        custom_role_conversions=custom_role_conversions,
         max_completion_tokens=8192,
         reasoning_effort="high",
-        drop_params = True,
-        fix_user_message=True
+        drop_params=True,
+        fix_user_message=True,
+        message_format="chatml",
+        flatten_messages_as_text=True
     )
     text_limit = 20000
     WEB_TOOLS = [
