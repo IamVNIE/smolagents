@@ -20,8 +20,10 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+from huggingface_hub import ChatCompletionOutputMessage
 
 from smolagents.models import (
+    AmazonBedrockServerModel,
     AzureOpenAIServerModel,
     ChatMessage,
     ChatMessageToolCall,
@@ -82,7 +84,8 @@ class TestModel:
         # check stop_sequence capture when output has trailing chars
         assert model(messages, stop_sequences=[stop_sequence]).content == "I'm ready to help you"
 
-    def test_transformers_message_no_tool(self):
+    def test_transformers_message_no_tool(self, monkeypatch):
+        monkeypatch.setattr("huggingface_hub.constants.HF_HUB_DOWNLOAD_TIMEOUT", 30)  # instead of 10
         model = TransformersModel(
             model_id="HuggingFaceTB/SmolLM2-135M-Instruct",
             max_new_tokens=5,
@@ -93,7 +96,8 @@ class TestModel:
         output = model(messages, stop_sequences=["great"]).content
         assert output == "assistant\nHello"
 
-    def test_transformers_message_vl_no_tool(self, shared_datadir):
+    def test_transformers_message_vl_no_tool(self, shared_datadir, monkeypatch):
+        monkeypatch.setattr("huggingface_hub.constants.HF_HUB_DOWNLOAD_TIMEOUT", 30)  # instead of 10
         import PIL.Image
 
         img = PIL.Image.open(shared_datadir / "000000039769.png")
@@ -130,6 +134,8 @@ class TestHfApiModel:
         custom_role_conversions = {MessageRole.USER: MessageRole.SYSTEM}
         model = HfApiModel(model_id="test-model", custom_role_conversions=custom_role_conversions)
         model.client = MagicMock()
+        mock_response = model.client.chat_completion.return_value
+        mock_response.choices[0].message = ChatCompletionOutputMessage(role="assistant")
         messages = [{"role": "user", "content": "Test message"}]
         _ = model(messages)
         # Verify that the role conversion was applied
@@ -197,6 +203,18 @@ class TestOpenAIServerModel:
             base_url=api_base, api_key=api_key, organization=organization, project=project, max_retries=5
         )
         assert model.client == MockOpenAI.return_value
+
+
+class TestAmazonBedrockServerModel:
+    def test_client_for_bedrock(self):
+        model_id = "us.amazon.nova-pro-v1:0"
+
+        with patch("boto3.client") as MockBoto3:
+            model = AmazonBedrockServerModel(
+                model_id=model_id,
+            )
+
+        assert model.client == MockBoto3.return_value
 
 
 class TestAzureOpenAIServerModel:
@@ -354,7 +372,7 @@ def test_get_clean_message_list_flatten_messages_as_text():
     result = get_clean_message_list(messages, flatten_messages_as_text=True)
     assert len(result) == 1
     assert result[0]["role"] == "user"
-    assert result[0]["content"] == "Hello!How are you?"
+    assert result[0]["content"] == "Hello!\nHow are you?"
 
 
 @pytest.mark.parametrize(
