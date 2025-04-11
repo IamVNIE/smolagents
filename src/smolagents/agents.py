@@ -94,18 +94,12 @@ class PlanningPromptTemplate(TypedDict):
     Prompt templates for the planning step.
 
     Args:
-        initial_facts (`str`): Initial facts prompt.
-        initial_plan (`str`): Initial plan prompt.
-        update_facts_pre_messages (`str`): Update facts pre-messages prompt.
-        update_facts_post_messages (`str`): Update facts post-messages prompt.
+        plan (`str`): Initial plan prompt.
         update_plan_pre_messages (`str`): Update plan pre-messages prompt.
         update_plan_post_messages (`str`): Update plan post-messages prompt.
     """
 
-    initial_facts: str
-    initial_plan: str
-    update_facts_pre_messages: str
-    update_facts_post_messages: str
+    plan: str
     update_plan_pre_messages: str
     update_plan_post_messages: str
 
@@ -156,10 +150,7 @@ class PromptTemplates(TypedDict):
 EMPTY_PROMPT_TEMPLATES = PromptTemplates(
     system_prompt="",
     planning=PlanningPromptTemplate(
-        initial_facts="",
         initial_plan="",
-        update_facts_pre_messages="",
-        update_facts_post_messages="",
         update_plan_pre_messages="",
         update_plan_post_messages="",
     ),
@@ -207,10 +198,21 @@ class MultiStepAgent:
         description: Optional[str] = None,
         provide_run_summary: bool = False,
         final_answer_checks: Optional[List[Callable]] = None,
+        logger: Optional[AgentLogger] = None,
     ):
         self.agent_name = self.__class__.__name__
         self.model = model
         self.prompt_templates = prompt_templates or EMPTY_PROMPT_TEMPLATES
+        if prompt_templates is not None:
+            missing_keys = set(EMPTY_PROMPT_TEMPLATES.keys()) - set(prompt_templates.keys())
+            assert not missing_keys, (
+                f"Some prompt templates are missing from your custom `prompt_templates`: {missing_keys}"
+            )
+            for key in EMPTY_PROMPT_TEMPLATES.keys():
+                for subkey in EMPTY_PROMPT_TEMPLATES[key]:
+                    assert subkey in prompt_templates[key], (
+                        f"Some prompt templates are missing from your custom `prompt_templates`: {subkey} under {key}"
+                    )
         self.max_steps = max_steps
         self.step_number = 0
         self.grammar = grammar
@@ -229,7 +231,12 @@ class MultiStepAgent:
         self.input_messages = None
         self.task = None
         self.memory = AgentMemory(self.system_prompt)
-        self.logger = AgentLogger(level=verbosity_level)
+
+        if logger is None:
+            self.logger = AgentLogger(level=verbosity_level)
+        else:
+            self.logger = logger
+
         self.monitor = Monitor(self.model, self.logger)
         self.step_callbacks = step_callbacks if step_callbacks is not None else []
         self.step_callbacks.append(self.monitor.update_metrics)
@@ -530,7 +537,7 @@ You have been provided with these additional arguments, that you can access usin
         return rationale.strip(), action.strip()
 
     @PrefectOrchestrator(type="task", name="FinalAnswerOfTask", cache_policy='no_cache', retries=1)
-    def provide_final_answer(self, task: str, images: Optional[list["PIL.Image.Image"]]) -> str:
+    def provide_final_answer(self, task: str, images: Optional[list["PIL.Image.Image"]] = None) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
 
@@ -1044,7 +1051,7 @@ class ToolCallingAgent(MultiStepAgent):
         tool_call = model_message.tool_calls[0]
         tool_name, tool_call_id = tool_call.function.name, tool_call.id
         tool_arguments = tool_call.function.arguments
-
+        memory_step.model_output = str(f"Called Tool: '{tool_name}' with arguments: {tool_arguments}")
         memory_step.tool_calls = [ToolCall(name=tool_name, arguments=tool_arguments, id=tool_call_id)]
 
         # Execute
